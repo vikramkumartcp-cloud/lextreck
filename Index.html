@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="LexTrack"/>
+<meta name="theme-color" content="#0d1117"/>
+<title>LexTrack — Court Summons Manager</title>
+
+<!-- PWA Manifest -->
+
+<link rel="manifest" href="manifest.json"/>
+
+<!-- Apple Touch Icon (home screen icon) -->
+
+<link rel="apple-touch-icon" href="icon-192.png"/>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dim: rgba(201,168,76,0.18);
+    --deep: #0d1117;
+    --surface: #13191f;
+    --surface2: #1a2230;
+    --surface3: #1f2a3a;
+    --border: rgba(201,168,76,0.22);
+    --border-soft: rgba(255,255,255,0.07);
+    --text: #e4ddd0;
+    --text-dim: #8a8070;
+    --text-mid: #b8b0a0;
+    --red: #c0392b;
+    --red-light: #e74c3c;
+    --green: #1e8449;
+    --green-light: #27ae60;
+    --blue: #1a6fa8;
+    --blue-light: #2e86c1;
+    --orange: #d4610e;
+    --radius: 12px;
+    --shadow: 0 8px 32px rgba(0,0,0,0.45);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: var(--deep);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    /* iOS safe area */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  #header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,17,23,0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 60px;
+  }
+  .header-brand { display: flex; align-items: center; gap: 12px; }
+  .brand-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--gold), #7a5a1a);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; box-shadow: 0 0 18px rgba(201,168,76,0.35);
+  }
+  .brand-text h1 { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--gold); letter-spacing: 1px; }
+  .brand-text p { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
+  #btn-add-main {
+    background: linear-gradient(135deg, var(--gold), #8a6015);
+    color: #0d1117; border: none; border-radius: 9px;
+    padding: 8px 18px; font-weight: 700; font-size: 13px;
+    cursor: pointer; font-family: 'Source Serif 4', serif;
+    box-shadow: 0 4px 16px rgba(201,168,76,0.28);
+    -webkit-tap-highlight-color: transparent;
+  }
+  #alert-banner {
+    display: none;
+    background: linear-gradient(90deg, #5c0a0a, #8b1c1c, #5c0a0a);
+    border-bottom: 2px solid var(--red-light);
+    padding: 10px 20px;
+  }
+  .alert-inner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .alert-bell { font-size: 20px; animation: ring 1.5s ease infinite; }
+  @keyframes ring { 0%,100%{transform:rotate(0)} 10%{transform:rotate(15deg)} 20%{transform:rotate(-15deg)} 30%{transform:rotate(10deg)} 40%{transform:rotate(-10deg)} 50%{transform:rotate(5deg)} }
+  .alert-text { flex: 1; font-size: 13px; font-weight: 600; color: #ffd0d0; }
+  .alert-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .alert-pill { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 3px 10px; font-size: 11px; color: #fff; cursor: pointer; }
+  #btn-dismiss-alert { background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); color: #fff; border-radius: 7px; padding: 5px 12px; cursor: pointer; font-family: inherit; font-size: 12px; }
+  #tabs {
+    display: flex; padding: 0 20px;
+    background: var(--surface); border-bottom: 1px solid var(--border-soft);
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  #tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    background: none; border: none; border-bottom: 3px solid transparent;
+    color: var(--text-dim); padding: 13px 18px; cursor: pointer;
+    font-family: 'Source Serif 4', serif; font-size: 12px; letter-spacing: 0.5px;
+    transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+    white-space: nowrap; -webkit-tap-highlight-color: transparent;
+  }
+  .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .tab-count { background: var(--gold-dim); color: var(--gold); border-radius: 20px; padding: 1px 7px; font-size: 10px; font-weight: 700; }
+  #main { padding: 20px 16px 80px; position: relative; }
+  .tab-panel { display: none; animation: fadeIn 0.25s ease; }
+  .tab-panel.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 22px; }
+  .stat-card {
+    background: var(--surface2); border: 1px solid var(--border-soft);
+    border-radius: var(--radius); padding: 14px 12px; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .stat-card.gold::before { background: linear-gradient(90deg, var(--gold), var(--gold-light)); }
+  .stat-card.blue::before { background: linear-gradient(90deg, var(--blue), var(--blue-light)); }
+  .stat-card.red::before { background: linear-gradient(90deg, var(--red), var(--red-light)); }
+  .stat-card.orange::before { background: linear-gradient(90deg, var(--orange), #e67e22); }
+  .stat-card.green::before { background: linear-gradient(90deg, var(--green), var(--green-light)); }
+  .stat-icon { font-size: 22px; margin-bottom: 4px; }
+  .stat-value { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 900; line-height: 1; }
+  .stat-card.gold .stat-value { color: var(--gold); }
+  .stat-card.blue .stat-value { color: #5dade2; }
+  .stat-card.red .stat-value { color: #ec7063; }
+  .stat-card.orange .stat-value { color: #f0a46a; }
+  .stat-card.green .stat-value { color: #82e0aa; }
+  .stat-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px; }
+  .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; margin-top: 22px; }
+  .section-header h3 { font-family: 'Playfair Display', serif; font-size: 13px; color: var(--gold); letter-spacing: 0.5px; white-space: nowrap; }
+  .section-line { flex: 1; height: 1px; background: var(--border); }
+  .cases-list { display: flex; flex-direction: column; gap: 8px; }
+  .case-card {
+    background: var(--surface2); border: 1px solid var(--border-soft);
+    border-radius: var(--radius); padding: 13px 15px;
+    border-left: 4px solid transparent; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+  }
+  .case-card:active { background: var(--surface3); }
+  .case-card.priority-high { border-left-color: var(--red-light); }
+  .case-card.priority-medium { border-left-color: #e67e22; }
+  .case-card.priority-low { border-left-color: var(--green-light); }
+  .case-card.is-completed { opacity: 0.5; }
+  .case-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .case-num { font-family: 'Playfair Display', serif; font-weight: 700; color: var(--gold); font-size: 14px; }
+  .case-name { color: var(--text); font-size: 13px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { border-radius: 20px; padding: 2px 9px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+  .badge-overdue { background: rgba(192,57,43,0.2); color: #f1948a; border: 1px solid rgba(192,57,43,0.4); }
+  .badge-today { background: rgba(231,76,60,0.2); color: #f1948a; border: 1px solid rgba(231,76,60,0.5); }
+  .badge-upcoming { background: rgba(41,128,185,0.18); color: #7fb3d3; border: 1px solid rgba(41,128,185,0.35); }
+  .badge-done { background: rgba(30,132,73,0.18); color: #82e0aa; border: 1px solid rgba(30,132,73,0.35); }
+  .badge-soon { background: rgba(214,137,16,0.18); color: #f0b04a; border: 1px solid rgba(214,137,16,0.35); }
+  .badge-priority-high { background: rgba(192,57,43,0.15); color: #f1948a; border: 1px solid rgba(192,57,43,0.3); }
+  .badge-priority-medium { background: rgba(230,126,34,0.15); color: #f0a46a; border: 1px solid rgba(230,126,34,0.3); }
+  .badge-priority-low { background: rgba(30,132,73,0.15); color: #82e0aa; border: 1px solid rgba(30,132,73,0.3); }
+  .case-meta { font-size: 11px; color: var(--text-dim); display: flex; flex-direction: column; gap: 3px; }
+  .case-meta span { display: flex; align-items: center; gap: 4px; }
+  .case-actions { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
+  .action-btn { border-radius: 7px; padding: 7px 12px; cursor: pointer; font-size: 13px; border: 1px solid; background: transparent; -webkit-tap-highlight-color: transparent; }
+  .action-btn.view { color: var(--gold); border-color: rgba(201,168,76,0.35); }
+  .action-btn.done { color: #82e0aa; border-color: rgba(30,132,73,0.35); }
+  .action-btn.edit { color: #7fb3d3; border-color: rgba(41,128,185,0.35); }
+  .action-btn.del { color: #f1948a; border-color: rgba(192,57,43,0.35); }
+  .empty-state { text-align: center; padding: 40px 20px; background: var(--surface2); border: 1px dashed var(--border); border-radius: var(--radius); color: var(--text-dim); font-style: italic; font-size: 13px; }
+  .empty-state .empty-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.4; }
+  .toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .search-wrap { position: relative; }
+  .search-wrap input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; padding: 11px 16px 11px 40px; color: var(--text); font-family: inherit; font-size: 14px; outline: none; }
+  .search-wrap input:focus { border-color: var(--gold); }
+  .search-wrap::before { content: '🔍'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; pointer-events: none; }
+  .filter-btns { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .filter-btns::-webkit-scrollbar { display: none; }
+  .filter-btn { background: var(--surface2); border: 1px solid var(--border-soft); color: var(--text-dim); border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: inherit; font-size: 11px; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+  .filter-btn.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+  .cal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .cal-header h3 { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold); flex: 1; text-align: center; }
+  .cal-nav { background: var(--surface2); border: 1px solid var(--border-soft); color: var(--gold); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 16px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-day-label { text-align: center; color: var(--text-dim); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 0; }
+  .cal-cell { min-height: 60px; background: var(--surface2); border: 1px solid var(--border-soft); border-radius: 7px; padding: 5px 4px; }
+  .cal-cell.today-cell { border-color: rgba(201,168,76,0.5); background: rgba(201,168,76,0.07); }
+  .cal-cell.empty { background: transparent; border: none; }
+  .cal-date { font-size: 11px; color: var(--text-dim); margin-bottom: 3px; font-weight: 600; }
+  .cal-cell.today-cell .cal-date { color: var(--gold); }
+  .cal-event { border-radius: 4px; padding: 2px 4px; font-size: 9px; color: var(--text); margin-bottom: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+  .cal-event.ev-high { background: rgba(192,57,43,0.35); border-left: 2px solid var(--red-light); }
+  .cal-event.ev-medium { background: rgba(214,137,16,0.3); border-left: 2px solid #e67e22; }
+  .cal-event.ev-low { background: rgba(30,132,73,0.3); border-left: 2px solid var(--green-light); }
+  .cal-event.ev-done { background: rgba(255,255,255,0.06); border-left: 2px solid var(--text-dim); opacity: 0.5; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: flex-end; justify-content: center; z-index: 500; padding: 0; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0; padding: 24px 20px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    width: 100%; max-height: 92vh; overflow-y: auto;
+    transform: translateY(100%); transition: transform 0.3s ease;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+  .modal-header h2 { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 20px; }
+  .modal-close { background: none; border: none; color: var(--text-dim); font-size: 22px; cursor: pointer; padding: 4px; }
+  .form-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .form-field label { font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; }
+  .form-field input, .form-field select, .form-field textarea { background: rgba(255,255,255,0.05); border: 1px solid rgba(201,168,76,0.2); border-radius: 9px; padding: 11px 13px; color: var(--text); font-family: inherit; font-size: 16px; outline: none; width: 100%; color-scheme: dark; }
+  .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: var(--gold); }
+  .form-field select { background-color: var(--surface2); }
+  .form-field textarea { resize: none; height: 80px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-cancel { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid var(--border-soft); color: var(--text-dim); border-radius: 12px; padding: 14px; cursor: pointer; font-family: inherit; font-size: 15px; }
+  .btn-primary { flex: 2; background: linear-gradient(135deg, var(--gold), #8a6015); color: #0d1117; border: none; border-radius: 12px; padding: 14px; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 15px; }
+  .detail-status-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .detail-field { background: rgba(255,255,255,0.04); border-radius: 9px; padding: 10px 12px; }
+  .detail-field .d-label { font-size: 9px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+  .detail-field .d-value { font-size: 13px; color: var(--text); }
+  .detail-notes { background: rgba(255,255,255,0.04); border-radius: 9px; padding: 12px; margin-bottom: 16px; line-height: 1.7; color: var(--text-mid); font-size: 13px; }
+  .detail-actions { display: flex; gap: 8px; }
+  .det-btn { flex: 1; border-radius: 10px; padding: 12px; cursor: pointer; font-family: inherit; font-size: 13px; border: 1px solid; text-align: center; }
+  .det-btn.done { background: rgba(30,132,73,0.15); border-color: rgba(30,132,73,0.4); color: #82e0aa; }
+  .det-btn.edit { background: rgba(41,128,185,0.15); border-color: rgba(41,128,185,0.4); color: #7fb3d3; }
+  .det-btn.del { background: rgba(192,57,43,0.15); border-color: rgba(192,57,43,0.4); color: #f1948a; }
+  #toast { position: fixed; bottom: calc(28px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(80px); z-index: 9999; background: var(--surface3); border: 1px solid var(--border); border-radius: 24px; padding: 11px 22px; font-size: 13px; box-shadow: var(--shadow); opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; }
+  #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="header-brand">
+    <div class="brand-icon">⚖️</div>
+    <div class="brand-text">
+      <h1>LexTrack</h1>
+      <p>Court Summons</p>
+    </div>
+  </div>
+  <button id="btn-add-main" onclick="openAddModal()">+ Add</button>
+</div>
+
+<div id="alert-banner">
+  <div class="alert-inner">
+    <span class="alert-bell">🔔</span>
+    <div style="flex:1">
+      <div class="alert-text" id="alert-text"></div>
+      <div class="alert-pills" id="alert-pills"></div>
+    </div>
+    <button id="btn-dismiss-alert" onclick="dismissAlert()">Dismiss</button>
+  </div>
+</div>
+
+<div id="tabs">
+  <button class="tab-btn active" onclick="switchTab('dashboard', this)">📊 Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('all', this)">📋 Cases <span class="tab-count" id="tab-count-all">0</span></button>
+  <button class="tab-btn" onclick="switchTab('calendar', this)">📅 Calendar</button>
+  <button class="tab-btn" onclick="switchTab('completed', this)">✅ Done <span class="tab-count" id="tab-count-done">0</span></button>
+</div>
+
+<div id="main">
+  <div class="tab-panel active" id="panel-dashboard">
+    <div class="stats-grid">
+      <div class="stat-card gold"><div class="stat-icon">📁</div><div class="stat-value" id="s-total">0</div><div class="stat-label">Total</div></div>
+      <div class="stat-card blue"><div class="stat-icon">⚡</div><div class="stat-value" id="s-active">0</div><div class="stat-label">Active</div></div>
+      <div class="stat-card red"><div class="stat-icon">📅</div><div class="stat-value" id="s-today">0</div><div class="stat-label">Today</div></div>
+      <div class="stat-card orange"><div class="stat-icon">⚠️</div><div class="stat-value" id="s-overdue">0</div><div class="stat-label">Overdue</div></div>
+      <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-value" id="s-done">0</div><div class="stat-label">Done</div></div>
+    </div>
+    <div class="section-header"><div class="section-line"></div><h3>🚨 Urgent</h3><div class="section-line"></div></div>
+    <div class="cases-list" id="urgent-list"></div>
+    <div class="section-header"><div class="section-line"></div><h3>📆 Next 7 Days</h3><div class="section-line"></div></div>
+    <div class="cases-list" id="upcoming-list"></div>
+    <div class="section-header"><div class="section-line"></div><h3>📋 Future</h3><div class="section-line"></div></div>
+    <div class="cases-list" id="future-list"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-all">
+    <div class="toolbar">
+      <div class="search-wrap"><input type="text" id="search-input" placeholder="Search cases…" oninput="renderAll()"/></div>
+      <div class="filter-btns">
+        <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('active',this)">Active</button>
+        <button class="filter-btn" onclick="setFilter('overdue',this)">Overdue</button>
+        <button class="filter-btn" onclick="setFilter('today',this)">Today</button>
+        <button class="filter-btn" onclick="setFilter('upcoming',this)">Upcoming</button>
+      </div>
+    </div>
+    <div class="cases-list" id="all-list"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-calendar">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calPrev()">◀</button>
+      <h3 id="cal-month-label"></h3>
+      <button class="cal-nav" onclick="calNext()">▶</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-completed">
+    <div class="section-header"><div class="section-line"></div><h3>✅ Completed</h3><div class="section-line"></div></div>
+    <div class="cases-list" id="completed-list"></div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+
+<div class="modal-overlay" id="form-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2 id="form-modal-title">New Summons</h2>
+      <button class="modal-close" onclick="closeFormModal()">✕</button>
+    </div>
+    <div class="form-field"><label>Case Number *</label><input type="text" id="f-caseNumber" placeholder="e.g. CR-2025-0042"/></div>
+    <div class="form-field"><label>Case Name / Parties</label><input type="text" id="f-caseName" placeholder="State vs. John Doe"/></div>
+    <div class="form-field"><label>Court Name</label><input type="text" id="f-court" placeholder="District Court of…"/></div>
+    <div class="form-field"><label>Judge</label><input type="text" id="f-judge" placeholder="Hon. Judge Name"/></div>
+    <div class="form-row">
+      <div class="form-field"><label>Hearing Date *</label><input type="date" id="f-date"/></div>
+      <div class="form-field"><label>Time</label><input type="time" id="f-time"/></div>
+    </div>
+    <div class="form-field"><label>Courtroom / Location</label><input type="text" id="f-location" placeholder="Room 4B, 3rd Floor"/></div>
+    <div class="form-row">
+      <div class="form-field"><label>Type</label><input type="text" id="f-type" placeholder="Civil / Criminal…"/></div>
+      <div class="form-field"><label>Priority</label>
+        <select id="f-priority">
+          <option value="high">🔴 High</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="low">🟢 Low</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-field"><label>Counsel / Attorney</label><input type="text" id="f-counsel" placeholder="Attorney name"/></div>
+    <div class="form-field"><label>Notes</label><textarea id="f-notes" placeholder="Documents required, reminders…"></textarea></div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeFormModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitForm()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2 id="det-title">Case Details</h2>
+      <button class="modal-close" onclick="closeDetailModal()">✕</button>
+    </div>
+    <div id="det-body"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const STORE = 'lextrack-v1';
+let summons = [];
+let editId = null;
+let currentFilter = 'all';
+let calYear, calMonth;
+const dismissedIds = new Set();
+
+function loadData() { try { summons = JSON.parse(localStorage.getItem(STORE)) || []; } catch { summons = []; } }
+function saveData() { try { localStorage.setItem(STORE, JSON.stringify(summons)); } catch {} }
+function today() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+function parseDate(s) { if (!s) return null; const d = new Date(s); d.setHours(0,0,0,0); return d; }
+function daysUntil(ds) { const d = parseDate(ds); if (!d) return null; return Math.round((d - today()) / 86400000); }
+function getStatus(s) {
+  if (s.status === 'completed') return 'completed';
+  const d = daysUntil(s.date);
+  if (d === null) return 'upcoming';
+  if (d < 0) return 'overdue';
+  if (d === 0) return 'today';
+  if (d <= 7) return 'soon';
+  return 'upcoming';
+}
+function fmtDate(ds) { if (!ds) return '—'; return new Date(ds).toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'}); }
+function fmtTime(t) { if (!t) return ''; const [h,m] = t.split(':'); const hr = parseInt(h); return `${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2800); }
+
+function statusBadge(s) {
+  const st = getStatus(s), d = daysUntil(s.date);
+  const map = { completed:['badge-done','✓ Done'], overdue:['badge-overdue','⚠ Overdue'], today:['badge-today','⚡ TODAY'], soon:['badge-soon', d===1?'1 day':`${d}d`], upcoming:['badge-upcoming', d!==null?`${d}d`:'Sched'] };
+  const [cls,lbl] = map[st]||map.upcoming;
+  return `<span class="badge ${cls}">${lbl}</span>`;
+}
+function priorityBadge(p) {
+  const icons = {high:'🔴',medium:'🟡',low:'🟢'};
+  return `<span class="badge badge-priority-${p}">${icons[p]||''} ${p}</span>`;
+}
+
+function renderCard(s) {
+  const st = getStatus(s);
+  return `
+  <div class="case-card priority-${s.priority}${st==='completed'?' is-completed':''}" onclick="openDetail('${s.id}')">
+    <div class="case-top">
+      <span class="case-num">#${s.caseNumber}</span>
+      ${statusBadge(s)} ${priorityBadge(s.priority)}
+    </div>
+    ${s.caseName?`<div class="case-name" style="margin-bottom:6px;font-size:13px;color:var(--text-mid)">${s.caseName}</div>`:''}
+    <div class="case-meta">
+      ${s.court?`<span>🏛 ${s.court}</span>`:''}
+      ${s.date?`<span>📅 ${fmtDate(s.date)}${s.time?' · '+fmtTime(s.time):''}</span>`:''}
+      ${s.judge?`<span>👨‍⚖️ ${s.judge}</span>`:''}
+    </div>
+  </div>`;
+}
+
+function renderList(elId, items) {
+  const el = document.getElementById(elId);
+  el.innerHTML = items.length ? items.map(renderCard).join('') : `<div class="empty-state"><div class="empty-icon">📂</div>No summons here.</div>`;
+}
+
+function renderDashboard() {
+  const active = summons.filter(s => s.status !== 'completed');
+  const todayC = active.filter(s => getStatus(s) === 'today');
+  const overdue = active.filter(s => getStatus(s) === 'overdue');
+  const done = summons.filter(s => s.status === 'completed');
+  document.getElementById('s-total').textContent = summons.length;
+  document.getElementById('s-active').textContent = active.length;
+  document.getElementById('s-today').textContent = todayC.length;
+  document.getElementById('s-overdue').textContent = overdue.length;
+  document.getElementById('s-done').textContent = done.length;
+  document.getElementById('tab-count-all').textContent = summons.length;
+  document.getElementById('tab-count-done').textContent = done.length;
+  const urgent = [...overdue,...todayC].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const soon = active.filter(s=>{const d=daysUntil(s.date);return d>0&&d<=7;}).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const future = active.filter(s=>{const d=daysUntil(s.date);return d>7;}).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  renderList('urgent-list', urgent);
+  renderList('upcoming-list', soon);
+  renderList('future-list', future);
+  const alertItems = [...overdue,...todayC].filter(s=>!dismissedIds.has(s.id));
+  if (alertItems.length > 0) {
+    document.getElementById('alert-banner').style.display = 'block';
+    document.getElementById('alert-text').textContent = `${alertItems.length} summons need attention:`;
+    document.getElementById('alert-pills').innerHTML = alertItems.slice(0,3).map(s=>`<span class="alert-pill" onclick="openDetail('${s.id}')">#${s.caseNumber}</span>`).join('');
+  } else { document.getElementById('alert-banner').style.display = 'none'; }
+}
+
+function renderAll() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  let items = summons.filter(s => {
+    if (q && !(`${s.caseNumber} ${s.caseName} ${s.court} ${s.judge}`.toLowerCase().includes(q))) return false;
+    if (currentFilter === 'active') return s.status !== 'completed';
+    if (currentFilter === 'overdue') return getStatus(s) === 'overdue';
+    if (currentFilter === 'today') return getStatus(s) === 'today';
+    if (currentFilter === 'upcoming') return s.status !== 'completed' && !['overdue','today'].includes(getStatus(s));
+    return true;
+  }).sort((a,b) => {
+    if (a.status==='completed'&&b.status!=='completed') return 1;
+    if (b.status==='completed'&&a.status!=='completed') return -1;
+    return new Date(a.date)-new Date(b.date);
+  });
+  renderList('all-list', items);
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+function renderCompleted() {
+  renderList('completed-list', summons.filter(s=>s.status==='completed').sort((a,b)=>new Date(b.date)-new Date(a.date)));
+}
+
+function renderCalendar() {
+  const now = new Date();
+  if (calYear===undefined) { calYear=now.getFullYear(); calMonth=now.getMonth(); }
+  document.getElementById('cal-month-label').textContent = new Date(calYear,calMonth,1).toLocaleString('default',{month:'long',year:'numeric'});
+  const firstDay = new Date(calYear,calMonth,1).getDay();
+  const daysInMonth = new Date(calYear,calMonth+1,0).getDate();
+  const td = now.getDate(), tm = now.getMonth(), ty = now.getFullYear();
+  const byDate = {};
+  summons.forEach(s => {
+    if (!s.date) return;
+    const d = new Date(s.date);
+    if (d.getFullYear()===calYear && d.getMonth()===calMonth) { const k=d.getDate(); if(!byDate[k])byDate[k]=[]; byDate[k].push(s); }
+  });
+  let html = ['S','M','T','W','T','F','S'].map(d=>`<div class="cal-day-label">${d}</div>`).join('');
+  for (let i=0;i<firstDay;i++) html+=`<div class="cal-cell empty"></div>`;
+  for (let d=1;d<=daysInMonth;d++) {
+    const isToday = d===td&&calMonth===tm&&calYear===ty;
+    const events = (byDate[d]||[]).map(s=>`<div class="cal-event ev-${s.status==='completed'?'done':s.priority}" onclick="openDetail('${s.id}');event.stopPropagation()">#${s.caseNumber}</div>`).join('');
+    html+=`<div class="cal-cell${isToday?' today-cell':''}"><div class="cal-date">${d}</div>${events}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = html;
+}
+function calPrev() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calNext() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name==='all') renderAll();
+  if (name==='calendar') renderCalendar();
+  if (name==='completed') renderCompleted();
+}
+
+const FIELDS = ['caseNumber','caseName','court','judge','date','time','location','type','counsel','priority','notes'];
+function openAddModal() {
+  editId = null;
+  document.getElementById('form-modal-title').textContent = '⚖️ New Summons';
+  FIELDS.forEach(f => { const el=document.getElementById('f-'+f); if(el) el.value = f==='priority'?'medium':''; });
+  document.getElementById('form-modal').classList.add('open');
+}
+function openEdit(id) {
+  const s = summons.find(x=>x.id===id); if(!s) return;
+  editId = id;
+  document.getElementById('form-modal-title').textContent = '✏️ Edit Summons';
+  FIELDS.forEach(f => { const el=document.getElementById('f-'+f); if(el) el.value=s[f]||''; });
+  closeDetailModal();
+  document.getElementById('form-modal').classList.add('open');
+}
+function closeFormModal() { document.getElementById('form-modal').classList.remove('open'); }
+function submitForm() {
+  const caseNumber = document.getElementById('f-caseNumber').value.trim();
+  const date = document.getElementById('f-date').value;
+  if (!caseNumber||!date) { showToast('⚠️ Case Number & Date required.'); return; }
+  const obj = {};
+  FIELDS.forEach(f => { const el=document.getElementById('f-'+f); obj[f]=el?el.value.trim():''; });
+  if (editId) { const idx=summons.findIndex(x=>x.id===editId); summons[idx]={...summons[idx],...obj}; showToast('✅ Updated!'); }
+  else { summons.push({id:uid(),status:'active',...obj}); showToast('✅ Added!'); }
+  saveData(); closeFormModal(); renderAll_full();
+}
+
+function openDetail(id) {
+  const s = summons.find(x=>x.id===id); if(!s) return;
+  const st = getStatus(s);
+  document.getElementById('det-title').textContent = `#${s.caseNumber}`;
+  const fields = [['🏛',s.court],['👨‍⚖️',s.judge],['📅',fmtDate(s.date)],['🕐',fmtTime(s.time)||'—'],['📍',s.location||'—'],['📄',s.type||'—'],['⚖️',s.counsel||'—']];
+  document.getElementById('det-body').innerHTML = `
+    <div class="detail-status-bar">${s.caseName?`<div style="font-size:15px;color:var(--text-mid);width:100%;margin-bottom:6px">${s.caseName}</div>`:''}${statusBadge(s)} ${priorityBadge(s.priority)}</div>
+    <div class="detail-grid">${fields.filter(([,v])=>v&&v!=='—').map(([l,v])=>`<div class="detail-field"><div class="d-label">${l}</div><div class="d-value">${v}</div></div>`).join('')}</div>
+    ${s.notes?`<div class="detail-notes">${s.notes}</div>`:''}
+    <div class="detail-actions">
+      ${st!=='completed'?`<button class="det-btn done" onclick="markDone('${s.id}');closeDetailModal()">✓ Done</button>`:''}
+      <button class="det-btn edit" onclick="openEdit('${s.id}')">✏️ Edit</button>
+      <button class="det-btn del" onclick="confirmDelete('${s.id}');closeDetailModal()">🗑</button>
+    </div>`;
+  document.getElementById('detail-modal').classList.add('open');
+}
+function closeDetailModal() { document.getElementById('detail-modal').classList.remove('open'); }
+function markDone(id) { const s=summons.find(x=>x.id===id); if(!s)return; s.status='completed'; saveData(); renderAll_full(); showToast('✅ Completed!'); }
+function confirmDelete(id) { if(!confirm('Delete this summons?'))return; summons=summons.filter(x=>x.id!==id); saveData(); renderAll_full(); showToast('🗑 Deleted.'); }
+function dismissAlert() { summons.filter(s=>['overdue','today'].includes(getStatus(s))).forEach(s=>dismissedIds.add(s.id)); document.getElementById('alert-banner').style.display='none'; }
+function renderAll_full() { renderDashboard(); renderAll(); renderCompleted(); if(document.getElementById('panel-calendar').classList.contains('active'))renderCalendar(); }
+
+document.getElementById('form-modal').addEventListener('click', function(e){if(e.target===this)closeFormModal();});
+document.getElementById('detail-modal').addEventListener('click', function(e){if(e.target===this)closeDetailModal();});
+
+// PWA Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+loadData();
+const now = new Date(); calYear=now.getFullYear(); calMonth=now.getMonth();
+renderAll_full();
+</script>
+
+</body>
+</html>
